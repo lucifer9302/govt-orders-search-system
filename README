@@ -1,0 +1,243 @@
+GOVERNMENT ORDERS SEARCH SYSTEM – LOCAL SETUP GUIDE
+(macOS • Ubuntu/Linux • Windows)
+
+This project provides:
+- OCR-based ingestion of Government Order PDFs
+- Keyword-based file search (one result per file)
+- Redis Stack (Docker) for storage and indexing
+- Streamlit UI for searching and viewing results
+- Fully portable local setup (works across machines)
+
+1. PREREQUISITES
+
+1.1 Python
+
+Required: Python 3.11
+
+Verify:
+  python --version
+
+1.2 Docker
+
+Required: Docker Desktop (or Docker Engine)
+
+Verify:
+  docker --version
+
+1.3 OCR SYSTEM DEPENDENCIES
+
+These are REQUIRED for PDF OCR.
+
+macOS
+Install Homebrew (if not installed):
+  https://brew.sh
+
+Then run:
+  brew install tesseract poppler
+
+Verify:
+  tesseract --version
+  pdftoppm -h
+
+Ubuntu / Debian Linux
+Run:
+  sudo apt update
+  sudo apt install -y tesseract-ocr poppler-utils
+
+Verify:
+  tesseract --version
+  pdftoppm -h
+
+Windows
+
+1. Install Tesseract OCR:
+   https://github.com/UB-Mannheim/tesseract/wiki
+
+   During install:
+   - Check “Add to PATH”
+
+2. Install Poppler:
+   - Download Windows Poppler binaries
+   - Add the bin folder to PATH
+
+Verify in Command Prompt:
+  tesseract --version
+
+2. PROJECT STRUCTURE
+
+Your project directory MUST look like this:
+
+govt_orders_redressal_system/
+├── start_redis_stack.sh
+├── encode.py
+├── streamlit_app.py
+├── redis_search.py
+├── pdf_ocr.py
+├── config.py
+├── requirements.txt
+├── files
+│    ├── file1.pdf
+│    ├── file2.pdf
+│    └── ...
+└── README.txt
+
+IMPORTANT:
+- Place ALL PDF files inside: folder ‘files’
+- Do NOT use absolute paths
+
+3. PYTHON VIRTUAL ENVIRONMENT SETUP (venv name can be changed as preferred)
+
+----------------
+macOS / Ubuntu
+----------------
+
+Create a Python 3.11 virtual environment: 
+  python3.11 -m venv govt_orders
+
+Activate it:
+  source govt_orders/bin/activate
+
+Verify:
+  python --version
+  (must show Python 3.11.x)
+
+----------------
+Windows (PowerShell)
+----------------
+
+Create venv:
+  python -m venv govt_orders_new
+
+Activate:
+  govt_orders_new\Scripts\Activate.ps1
+
+Verify:
+  python --version
+  (must show Python 3.11.x)
+
+----------------
+Install Python dependencies (ALL OS)
+----------------
+
+Upgrade pip:
+  python -m pip install --upgrade pip
+
+Install requirements:
+  pip install -r requirements.txt
+
+4. REDIS STACK (DOCKER) SETUP
+
+Redis Stack provides:
+- Redis server
+- Vector indexing
+- RedisInsight UI
+
+4.1 Find Redis Stack startup script
+
+File: start_redis_stack.sh  
+(Location: project root)
+
+4.3 Start Redis Stack
+
+macOS / Ubuntu
+Run:
+  ./start_redis_stack.sh
+
+Windows (PowerShell)
+Run:
+  docker run -d ^
+    --name redis-stack ^
+    -p 6379:6379 ^
+    -p 8001:8001 ^
+    redis/redis-stack:latest
+
+4.4 Verify Redis is running
+
+Check containers:
+  docker ps
+
+You should see:
+  redis-stack
+
+Verify from Python (ALL OS):
+
+  python - <<EOF
+  import redis
+  r = redis.Redis(host="localhost", port=6379)
+  r.ping()
+  print("Redis is running and reachable")
+  EOF
+
+RedisInsight UI:
+  http://localhost:8001
+
+5. INGEST PDF FILES INTO REDIS
+
+Before running:
+- Ensure PDFs exist in folder ‘files’
+
+Run ingestion:
+  python encode.py
+
+Expected output:
+- Redis connection confirmation
+- PDF processing logs
+- “Ingestion complete”
+
+IMPORTANT:
+- Running encode.py again ADDS new files
+- Existing files are preserved
+- Duplicate files are skipped automatically
+
+6. RUN THE STREAMLIT UI
+
+Start the UI:
+  streamlit run streamlit_app.py
+
+Open in browser:
+  http://localhost:8501
+
+7. HOW SEARCH WORKS
+
+- Keyword-based (not semantic)
+- Finds ALL files containing the query
+- Shows ONLY one matching line per file
+- Highlights the query text
+- Filename is clickable (opens/downloads PDF)
+- Fully portable across machines
+
+8. MOVING THIS PROJECT TO ANOTHER COMPUTER
+
+This setup is fully portable.
+
+Steps:
+1. Zip or copy entire project folder
+2. Move to another computer
+3. Install prerequisites (Python, Docker, OCR tools)
+4. Recreate virtual environment
+5. Start Redis Stack
+6. Run encode.py
+7. Run streamlit_app.py
+
+NO path changes required.
+
+9. COMMON TROUBLESHOOTING
+
+Redis connection issues:
+- Ensure Docker is running
+- Restart Redis Stack
+
+PDFs not appearing:
+- Check data/pdfs/ directory
+- Ensure .pdf extension
+
+OCR returns empty text:
+- Verify Tesseract installation
+- Run: tesseract --version
+
+10. IMPORTANT RULES (DO NOT BREAK THESE)
+
+- Do NOT store absolute file paths
+- Do NOT store PDFs inside Redis
+- Do NOT use <a href> for local files during testing
+- Always use relative paths + Streamlit serving
